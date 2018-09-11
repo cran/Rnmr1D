@@ -217,12 +217,13 @@ SEXP C_GlobSeg (SEXP v, int dN, double sig)
 // [[Rcpp::export]]
 SEXP lowpass1 (SEXP x, double alpha)
 {
-   NumericVector y1(x);
-   NumericVector y2(clone(x));
-   int n=y1.size();
-   int k;
-   for (k=1; k<n; k++) y2[k] = y2[k-1] + alpha * (y1[k] - y2[k-1]);
-   return(y2);
+   int k,N;
+   NumericVector VecIn(x);
+   N = VecIn.size();
+   NumericVector VecOut(N);
+   VecOut[0]=VecIn[0];
+   for (k=1; k<N; k++) VecOut[k] = VecOut[k-1] + alpha * (VecIn[k] - VecOut[k-1]);
+   return(VecOut);
 }
 
 // [[Rcpp::export]]
@@ -240,8 +241,8 @@ double WinMoy (SEXP v, int n1, int n2)
 SEXP Smooth (SEXP v, int n)
 {
     NumericVector specR(v);
-    int n1,n2;
-    int N = specR.size();
+    int n1,n2,N;
+    N = specR.size();
     NumericVector S(N);
     for (int count=0; count<N; count++) {
         n1 = count >= n ? count - n : 0;
@@ -870,6 +871,33 @@ SEXP C_maxval_buckets (SEXP x, SEXP b)
            M(k,m) = maxC(Y, Buc(m,0), Buc(m,1));
    }
    return(M);
+}
+
+// [[Rcpp::export]]
+SEXP C_ppmIntMax_buckets (SEXP x, SEXP b)
+{
+   NumericMatrix VV(x);
+   NumericMatrix Buc(b);
+   int n_specs = VV.nrow();
+   int n_bucs = Buc.nrow();
+   int k,m,i;
+   double Y, sumS;
+
+   //ppm values for each bucket of the maximum of the average intensity of all spectra 
+   NumericVector P(n_bucs);
+
+   // for each bucket
+   for (m=0; m<n_bucs; m++) {
+      Y=0;
+   // for each point in the bucket range
+      for (i=Buc(m,0); i<Buc(m,1); i++) {
+          // for each spectrum
+          sumS=0; for (k=0; k<n_specs; k++) sumS += VV(k,i);
+          // Keep the ppm value if it the current intensity is over than previous.
+          if (sumS>Y) { Y=sumS; P[m]=i; }
+      }       
+   }
+   return(P);
 }
 
 // [[Rcpp::export]]
