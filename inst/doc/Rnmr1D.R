@@ -57,10 +57,13 @@ clusthca <- Rnmr1D::getClusters(outMat, method='hca', vcutusr=0)
 clusthca$clustertab[1:20, ]
 clusthca$clusters$C5      # same as outclust$clusters[['C5']]
 
-## ----plot5a, echo=TRUE, fig.align='center', fig.width=12, fig.height=10----
-layout(matrix(1:2, 2, 1,byrow = TRUE))
-plotCriterion(clustcor, reverse=TRUE)
-plotCriterion(clusthca)
+## ----plot5a, echo=TRUE, fig.align='center', fig.width=12, fig.height=6----
+g1 <- ggplotCriterion(clustcor)
+# ggplotPlotly(g1, width=820, height=400)
+g1
+g2 <- ggplotCriterion(clusthca)
+# ggplotPlotly(g2, width=820, height=400)
+g2
 
 ## ----plot5b, echo=TRUE, fig.align='center', fig.width=12, fig.height=6----
 layout(matrix(1:2, 1, 2,byrow = TRUE))
@@ -73,26 +76,37 @@ hist(simplify2array(lapply(clusthca$clusters, length)),
      breaks=20, main="HCA", xlab="size", col="darkcyan")
 mtext("clusters size distribution", side = 3)
 
-## ----plot5c, echo=TRUE, fig.align='center', fig.width=12, fig.height=8----
-layout(matrix(1:2, 2, 1,byrow = TRUE))
-plotClusters(outMat,clustcor, horiz=FALSE, main="Boxplot of the clusters (CORR)")
-plotClusters(outMat,clusthca, horiz=FALSE, main="Boxplot of the clusters (HCA)")
+## ----plot5c, echo=TRUE, fig.align='center', fig.width=12, fig.height=6----
+g3 <- ggplotClusters(outMat,clustcor)
+# ggplotPlotly(g3, width=820, height=400)
+g3
+g4 <- ggplotClusters(outMat,clusthca)
+# ggplotPlotly(g4, width=820, height=400)
+g4
+
 
 ## ----proc6, echo=TRUE, eval=TRUE-----------------------------------------
 pca <- prcomp(outMat,retx=TRUE,scale=T, rank=2)
+sd <- pca$sdev
+eigenvalues <- sd^2
+evnorm <- (100*eigenvalues/sum(eigenvalues))[1:10]
 
-## ----plot6a, echo=TRUE, fig.align='center', fig.width=12, fig.height=8----
-# Choose 'Treatment' as factor, confidence level = 95%
-plotScores(pca$x, 1, 2, out$samples, factor='Treatment', level=0.95)
+## ----plot6a, echo=TRUE, fig.align='center', fig.width=12, fig.height=6----
+g5 <- ggplotScores(pca$x, 1, 2, groups=out$samples$Treatment, EV=evnorm , gcontour="polygon")
+#ggplotPlotly(g5, width=820, height=650)
+g5
 
 ## ----plot6b, echo=TRUE, fig.align='center', fig.width=12, fig.height=10----
-plotLoadings(pca$rotation, 1, 2, associations=clusthca$clustertab, 
-             cexlabel=0.6, level=0.8, main=sprintf("Loadings - Crit=%s",clusthca$vcrit) )
+g6 <- ggplotLoadings(pca$rotation, 1, 2, associations=clusthca$clustertab, EV=evnorm, main=sprintf("Loadings - Crit=%s",clusthca$vcrit), gcontour="ellipse" )
+#ggplotPlotly(g6, width=820, height=650)
+g6
 
 ## ----plot6c, echo=TRUE, fig.align='center', fig.width=12, fig.height=10----
 outMat.merged <- Rnmr1D::getMergedDataset(outMat, clusthca, onlycluster=TRUE)
 pca.merged <- prcomp(outMat.merged,retx=TRUE,scale=T, rank=2)
-plotLoadings(pca.merged$rotation, 1, 2, associations=NULL, cexlabel=1 )
+g7 <- ggplotLoadings(pca.merged$rotation, 1, 2, associations=NULL, EV=evnorm)
+# ggplotPlotly(g7, width=820, height=650)
+g7
 
 ## ----proc101, echo=TRUE, eval=TRUE---------------------------------------
 data_dir <- system.file("extra", package = "Rnmr1D")
