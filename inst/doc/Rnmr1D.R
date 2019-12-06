@@ -38,7 +38,7 @@ plotSpecMat(out$specMat, ppm_lim=c(0.5,5), K=0.67, dppm_max=0, cols=cols)
 
 ## ----proc3, echo=TRUE, eval=TRUE-----------------------------------------
 specMat.new <- Rnmr1D::doProcCmd(out, 
-     c( "bucket aibin 10.2 10.5 0.3 3 0", "9.5 4.9", "4.8 0.5", "EOL" ), ncpu=2, debug=TRUE)
+     c( "bucket aibin 10.2 10.5 0.2 3 0", "9.5 4.9", "4.8 0.5", "EOL" ), ncpu=2, debug=TRUE)
 out$specMat <- specMat.new
 
 ## ----proc4, echo=TRUE, eval=TRUE-----------------------------------------
@@ -51,18 +51,19 @@ clustcor <- Rnmr1D::getClusters(outMat, method='corr', cval=0, dC=0.003, ncpu=2)
 
 ## ----proc5b, echo=TRUE, eval=TRUE----------------------------------------
 options(warn=-1)
-clusthca <- Rnmr1D::getClusters(outMat, method='hca', vcutusr=0)
+clusthca <- Rnmr1D::getClusters(outMat, method='hca', vcutusr=0.11)
 
 ## ----proc5c, echo=TRUE, eval=TRUE----------------------------------------
-clusthca$clustertab[1:20, ]
-clusthca$clusters$C5      # same as outclust$clusters[['C5']]
+clustcor$clustertab[1:20, ]
+
+clustcor$clusters$C3      # same as clustcor$clusters[['C3']]
 
 ## ----plot5a, echo=TRUE, fig.align='center', fig.width=12, fig.height=6----
 g1 <- ggplotCriterion(clustcor)
-# ggplotPlotly(g1, width=820, height=400)
+#ggplotPlotly(g1, width=820, height=400)
 g1
 g2 <- ggplotCriterion(clusthca)
-# ggplotPlotly(g2, width=820, height=400)
+#ggplotPlotly(g2, width=820, height=400)
 g2
 
 ## ----plot5b, echo=TRUE, fig.align='center', fig.width=12, fig.height=6----
@@ -78,10 +79,10 @@ mtext("clusters size distribution", side = 3)
 
 ## ----plot5c, echo=TRUE, fig.align='center', fig.width=12, fig.height=6----
 g3 <- ggplotClusters(outMat,clustcor)
-# ggplotPlotly(g3, width=820, height=400)
+#ggplotPlotly(g3, width=820, height=400)
 g3
 g4 <- ggplotClusters(outMat,clusthca)
-# ggplotPlotly(g4, width=820, height=400)
+#ggplotPlotly(g4, width=820, height=400)
 g4
 
 
@@ -93,7 +94,7 @@ evnorm <- (100*eigenvalues/sum(eigenvalues))[1:10]
 
 ## ----plot6a, echo=TRUE, fig.align='center', fig.width=12, fig.height=6----
 g5 <- ggplotScores(pca$x, 1, 2, groups=out$samples$Treatment, EV=evnorm , gcontour="polygon")
-#ggplotPlotly(g5, width=820, height=650)
+#ggplotPlotly(g5, width=820, height=450)
 g5
 
 ## ----plot6b, echo=TRUE, fig.align='center', fig.width=12, fig.height=10----
@@ -105,7 +106,7 @@ g6
 outMat.merged <- Rnmr1D::getMergedDataset(outMat, clusthca, onlycluster=TRUE)
 pca.merged <- prcomp(outMat.merged,retx=TRUE,scale=T, rank=2)
 g7 <- ggplotLoadings(pca.merged$rotation, 1, 2, associations=NULL, EV=evnorm)
-# ggplotPlotly(g7, width=820, height=650)
+#ggplotPlotly(g7, width=820, height=650)
 g7
 
 ## ----proc101, echo=TRUE, eval=TRUE---------------------------------------
@@ -135,7 +136,7 @@ spec <- Spec1rDoProc(Input=ACQDIR,param=procParams)
 ## ----proc105, echo=TRUE, eval=TRUE---------------------------------------
 ls(spec)
 
-## ----plot100, echo=TRUE, fig.align='center', fig.width=12, fig.height=8----
+## ----plot100, echo=TRUE, fig.align='center', fig.width=9, fig.height=6----
 plot( spec$ppm, spec$int, type="l", col="blue", 
                 xlab="ppm", ylab="Intensities", 
                 xlim=c( spec$pmax, spec$pmin ), ylim=c(0, max(spec$int/100)) )

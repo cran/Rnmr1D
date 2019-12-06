@@ -121,7 +121,15 @@ C_corr_spec_re <- function(l) {
     .Call('_Rnmr1D_C_corr_spec_re', PACKAGE = 'Rnmr1D', l)
 }
 
-C_optim_phc <- function(ax, bx, l, flg, tol) {
-    .Call('_Rnmr1D_C_optim_phc', PACKAGE = 'Rnmr1D', ax, bx, l, flg, tol)
+Fmin <- function(par, re, im, blphc, B, flg = 0L) {
+    .Call('_Rnmr1D_Fmin', PACKAGE = 'Rnmr1D', par, re, im, blphc, B, flg)
+}
+
+Fentropy <- function(par, re, im, blphc, B, gamma = 5e-5) {
+    .Call('_Rnmr1D_Fentropy', PACKAGE = 'Rnmr1D', par, re, im, blphc, B, gamma)
+}
+
+C_SDL_convolution <- function(x, y, sigma) {
+    .Call('_Rnmr1D_C_SDL_convolution', PACKAGE = 'Rnmr1D', x, y, sigma)
 }
 
