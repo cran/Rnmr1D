@@ -33,7 +33,7 @@ detectCores <- function(...) {
 #'  }
 setLogFile <- function(con=stdout())
 {
-   if ("connection" %in% class(con) ) LOGFILE <<- con
+   if ("connection" %in% class(con) ) assign('LOGFILE', con)
 }
 
 #' setPPMbounds
@@ -44,10 +44,10 @@ setLogFile <- function(con=stdout())
 #' @param carbon Minimal and Maximal ppm value for 13C NMR
 setPPMbounds <- function(proton=c(-0.5,11), carbon=c(0,200))
 {
-   PPM_MIN <<- proton[1]
-   PPM_MAX <<- proton[2]
-   PPM_MIN_13C <<- carbon[1]
-   PPM_MAX_13C <<- carbon[2]
+   assign('PPM_MIN', proton[1])
+   assign('PPM_MAX', proton[2])
+   assign('PPM_MIN_13C', carbon[1])
+   assign('PPM_MAX_13C', carbon[2])
 }
    
 #' doProcessing 
@@ -99,7 +99,7 @@ setPPMbounds <- function(proton=c(-0.5,11), carbon=c(0,200))
 #'     cmdfile <- file.path(data_dir, "NP_macro_cmd.txt")
 #'     samplefile <- file.path(data_dir, "Samples.txt")
 #'     out <- Rnmr1D::doProcessing(data_dir, cmdfile=cmdfile, 
-#'                                 samplefile=samplefile, ncpu=detectCores())
+#'                                 samplefile=samplefile, ncpu=2)
 #' }
 #' @seealso the NMRProcFlow online documentation \url{https://nmrprocflow.org/} and especially 
 #' the Macro-command Reference Guide (\url{https://nmrprocflow.org/themes/pdf/Macrocommand.pdf})
@@ -135,20 +135,24 @@ doProcessing <- function (path, cmdfile, samplefile=NULL, bucketfile=NULL, ncpu=
         parnames <- NULL; parvals <- NULL
         for (param in procpar ) { parnames <- c( parnames, unlist(strsplit(param,"="))[1] ); parvals <- c( parvals, unlist(strsplit(param,"="))[2] ); }
         names(parvals) <- parnames;  procpar <- data.frame(t(parvals), stringsAsFactors=FALSE)
-        procParams$READ_RAW_ONLY <- FALSE
         if (! is.null(procpar$Vendor)) procParams$VENDOR <- tolower(trim(procpar$Vendor))
         if (! is.null(procpar$Type)) procParams$INPUT_SIGNAL <- trim(procpar$Type)
         if (! is.null(procpar$LB)) procParams$LB <- as.numeric(procpar$LB)
         if (! is.null(procpar$GB)) procParams$GB <- as.numeric(procpar$GB)
-        if (! is.null(procpar$BLPHC)) procParams$BLPHC <- ifelse( procpar$BLPHC=="TRUE", TRUE, FALSE)
-        if (! is.null(procpar$ZF)) procParams$ZEROFILLING <- as.numeric(procpar$ZF)
-        if (! is.null(procpar$PHC0)) procParams$OPTPHC0 <- ifelse( procpar$PHC0=="TRUE", TRUE, FALSE)
-        if (! is.null(procpar$PHC1)) procParams$OPTPHC1 <- ifelse( procpar$PHC1=="TRUE", TRUE, FALSE)
         if (! is.null(procpar$ZNEG)) procParams$RABOT <- ifelse( procpar$ZNEG=="TRUE", TRUE, FALSE)
         if (! is.null(procpar$TSP)) procParams$TSP <- ifelse( procpar$TSP=="TRUE", TRUE, FALSE)
         if (! is.null(procpar$O1RATIO)) procParams$O1RATIO <- as.numeric(procpar$O1RATIO)
-        if (! is.null(procpar$TSPSNR)) procParams$TSPSNR <- as.numeric(procpar$TSPSNR)
-        if (! is.null(procpar$FP)) procParams$FRACPPM <- as.numeric(procpar$FP)
+        if (! is.null(procpar$ZF)) procParams$ZEROFILLING <- as.numeric(procpar$ZF)
+        if (! is.null(procpar$USRPHC) && procpar$USRPHC=="TRUE") {
+           procParams$OPTPHC0 <- procParams$OPTPHC1 <- FALSE
+           if (! is.null(procpar$PHC0)) procParams$phc0 <- as.numeric(procpar$PHC0)
+           if (! is.null(procpar$PHC1)) procParams$phc1 <- as.numeric(procpar$PHC1)
+        } else {
+           if (! is.null(procpar$PHC0)) procParams$OPTPHC0 <- ifelse( procpar$PHC0=="TRUE", TRUE, FALSE)
+           if (! is.null(procpar$PHC1)) procParams$OPTPHC1 <- ifelse( procpar$PHC1=="TRUE", TRUE, FALSE)
+           if (! is.null(procpar$CRIT1)) procParams$CRITSTEP1 <- as.numeric(procpar$CRIT1)
+        }
+        if (procParams$INPUT_SIGNAL=='fid') procParams$READ_RAW_ONLY <- FALSE
    }
 
    # Generate the 'samples.csv' & 'factors' files from the list of raw spectra
@@ -171,6 +175,7 @@ doProcessing <- function (path, cmdfile, samplefile=NULL, bucketfile=NULL, ncpu=
    LIST <- metadata$rawids
    Write.LOG(LOGFILE, paste0("Rnmr1D:  -- Nb Spectra = ",dim(LIST)[1]," -- Nb Cores = ",ncpu,"\n"))
 
+   specObj <- NULL
    tryCatch({
 
        cl <- parallel::makeCluster(ncpu)

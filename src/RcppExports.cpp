@@ -91,16 +91,16 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
-// Ajust_LB
-void Ajust_LB(SEXP s, SEXP b, int n1, int n2);
-RcppExport SEXP _Rnmr1D_Ajust_LB(SEXP sSEXP, SEXP bSEXP, SEXP n1SEXP, SEXP n2SEXP) {
+// fitLines
+void fitLines(SEXP s, SEXP b, int n1, int n2);
+RcppExport SEXP _Rnmr1D_fitLines(SEXP sSEXP, SEXP bSEXP, SEXP n1SEXP, SEXP n2SEXP) {
 BEGIN_RCPP
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< SEXP >::type s(sSEXP);
     Rcpp::traits::input_parameter< SEXP >::type b(bSEXP);
     Rcpp::traits::input_parameter< int >::type n1(n1SEXP);
     Rcpp::traits::input_parameter< int >::type n2(n2SEXP);
-    Ajust_LB(s, b, n1, n2);
+    fitLines(s, b, n1, n2);
     return R_NilValue;
 END_RCPP
 }
@@ -408,8 +408,8 @@ BEGIN_RCPP
 END_RCPP
 }
 // Fentropy
-double Fentropy(SEXP par, SEXP re, SEXP im, int blphc, double B, double gamma);
-RcppExport SEXP _Rnmr1D_Fentropy(SEXP parSEXP, SEXP reSEXP, SEXP imSEXP, SEXP blphcSEXP, SEXP BSEXP, SEXP gammaSEXP) {
+double Fentropy(SEXP par, SEXP re, SEXP im, int blphc, int neigh, double B, double Gamma);
+RcppExport SEXP _Rnmr1D_Fentropy(SEXP parSEXP, SEXP reSEXP, SEXP imSEXP, SEXP blphcSEXP, SEXP neighSEXP, SEXP BSEXP, SEXP GammaSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -417,9 +417,10 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< SEXP >::type re(reSEXP);
     Rcpp::traits::input_parameter< SEXP >::type im(imSEXP);
     Rcpp::traits::input_parameter< int >::type blphc(blphcSEXP);
+    Rcpp::traits::input_parameter< int >::type neigh(neighSEXP);
     Rcpp::traits::input_parameter< double >::type B(BSEXP);
-    Rcpp::traits::input_parameter< double >::type gamma(gammaSEXP);
-    rcpp_result_gen = Rcpp::wrap(Fentropy(par, re, im, blphc, B, gamma));
+    Rcpp::traits::input_parameter< double >::type Gamma(GammaSEXP);
+    rcpp_result_gen = Rcpp::wrap(Fentropy(par, re, im, blphc, neigh, B, Gamma));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -445,7 +446,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_Rnmr1D_lowpass1", (DL_FUNC) &_Rnmr1D_lowpass1, 2},
     {"_Rnmr1D_WinMoy", (DL_FUNC) &_Rnmr1D_WinMoy, 3},
     {"_Rnmr1D_Smooth", (DL_FUNC) &_Rnmr1D_Smooth, 2},
-    {"_Rnmr1D_Ajust_LB", (DL_FUNC) &_Rnmr1D_Ajust_LB, 4},
+    {"_Rnmr1D_fitLines", (DL_FUNC) &_Rnmr1D_fitLines, 4},
     {"_Rnmr1D_C_Estime_LB", (DL_FUNC) &_Rnmr1D_C_Estime_LB, 6},
     {"_Rnmr1D_C_Estime_LB2", (DL_FUNC) &_Rnmr1D_C_Estime_LB2, 6},
     {"_Rnmr1D_C_noise_estimate", (DL_FUNC) &_Rnmr1D_C_noise_estimate, 4},
@@ -469,7 +470,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_Rnmr1D_ajustBL", (DL_FUNC) &_Rnmr1D_ajustBL, 2},
     {"_Rnmr1D_C_corr_spec_re", (DL_FUNC) &_Rnmr1D_C_corr_spec_re, 1},
     {"_Rnmr1D_Fmin", (DL_FUNC) &_Rnmr1D_Fmin, 6},
-    {"_Rnmr1D_Fentropy", (DL_FUNC) &_Rnmr1D_Fentropy, 6},
+    {"_Rnmr1D_Fentropy", (DL_FUNC) &_Rnmr1D_Fentropy, 7},
     {"_Rnmr1D_C_SDL_convolution", (DL_FUNC) &_Rnmr1D_C_SDL_convolution, 3},
     {NULL, NULL, 0}
 };

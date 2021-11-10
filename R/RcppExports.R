@@ -29,8 +29,8 @@ Smooth <- function(v, n) {
     .Call('_Rnmr1D_Smooth', PACKAGE = 'Rnmr1D', v, n)
 }
 
-Ajust_LB <- function(s, b, n1, n2) {
-    invisible(.Call('_Rnmr1D_Ajust_LB', PACKAGE = 'Rnmr1D', s, b, n1, n2))
+fitLines <- function(s, b, n1, n2) {
+    invisible(.Call('_Rnmr1D_fitLines', PACKAGE = 'Rnmr1D', s, b, n1, n2))
 }
 
 C_Estime_LB <- function(s, istart, iend, WS, NEIGH, sig) {
@@ -125,8 +125,8 @@ Fmin <- function(par, re, im, blphc, B, flg = 0L) {
     .Call('_Rnmr1D_Fmin', PACKAGE = 'Rnmr1D', par, re, im, blphc, B, flg)
 }
 
-Fentropy <- function(par, re, im, blphc, B, gamma = 5e-5) {
-    .Call('_Rnmr1D_Fentropy', PACKAGE = 'Rnmr1D', par, re, im, blphc, B, gamma)
+Fentropy <- function(par, re, im, blphc, neigh, B, Gamma) {
+    .Call('_Rnmr1D_Fentropy', PACKAGE = 'Rnmr1D', par, re, im, blphc, neigh, B, Gamma)
 }
 
 C_SDL_convolution <- function(x, y, sigma) {
