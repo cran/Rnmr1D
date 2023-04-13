@@ -9,13 +9,15 @@ output:
     toc_float: yes
     theme: cerulean
     highlight: tango
+  pdf_document:
+    toc: yes
 always_allow_html: yes
 colorlinks: yes
 urlcolor: blue
-vignette: |
-  %\VignetteIndexEntry{Features illustration of the Rnmr1D package}
-  %\VignetteEncoding{UTF-8} 
-  %\VignetteEngine{knitr::knitr}
+vignette: >
+    %\VignetteIndexEntry{Features illustration of the Rnmr1D package}
+    %\VignetteEncoding{UTF-8}
+    %\VignetteEngine{knitr::rmarkdown}
 ---
 
 ```{r setup, include=FALSE}
@@ -175,7 +177,7 @@ In this approach a Hierachical Classification Analysis (HCA, hclust) is applied 
 
 ```{r proc5b, echo=TRUE, eval=TRUE}
 options(warn=-1)
-clusthca <- Rnmr1D::getClusters(outMat, method='hca', vcutusr=0.11)
+clusthca <- Rnmr1D::getClusters(outMat, method='hca', vcutusr=0.12)
 ```
 <br>
 <br>
@@ -190,7 +192,7 @@ The getClusters function returns a list containing the several components, in pa
 ```{r proc5c, echo=TRUE, eval=TRUE}
 clustcor$clustertab[1:20, ]
 
-clustcor$clusters$C3      # same as clustcor$clusters[['C3']]
+clustcor$clusters$C7      # same as clustcor$clusters[['C7']]
 ```
 
 <br>
@@ -236,7 +238,7 @@ hist(simplify2array(lapply(clusthca$clusters, length)),
 mtext("clusters size distribution", side = 3)
 ```
 
-We see that they cover three orders (log scaled)
+We see that they cover three orders (log scaled) for CORR method and four orders for HCA method
 
 ```{r plot5c, echo=TRUE, fig.align='center', fig.width=12, fig.height=6}
 g3 <- ggplotClusters(outMat,clustcor)
@@ -352,7 +354,7 @@ It returns a list containing the following components:
 ls(spec)
 ```
 
-Then, we plot the spectrum in the frequency domain (ppm)
+Then, we plot the spectrum in the frequency domain (ppm) in the full range
 
 ```{r plot100, echo=TRUE, fig.align='center', fig.width=9, fig.height=6}
 plot( spec$ppm, spec$int, type="l", col="blue", 
@@ -360,6 +362,20 @@ plot( spec$ppm, spec$int, type="l", col="blue",
                 xlim=c( spec$pmax, spec$pmin ), ylim=c(0, max(spec$int/100)) )
 legend("topleft", legend=metadata$samples[ID,1])
 ```
+
+Zoom in on 3 areas of the spectrum
+
+```{r plot10, echo=TRUE, fig.align='center', fig.width=9, fig.height=6}
+layout(matrix(c(1,1,2,3), 1, 4, byrow = TRUE))
+plot( spec$ppm, spec$int, type="l", col="blue", xlab="ppm", xlim=c( 8, 6 ), 
+      ylim=c(0, max(spec$int/1500)), ylab="Intensities" )
+legend("topleft", legend=metadata$samples[ID,1])
+plot( spec$ppm, spec$int, type="l", col="blue", xlab="ppm", xlim=c( 4.9, 4.7 ),
+      ylim=c(0, max(spec$int/10)), ylab="" )
+plot( spec$ppm, spec$int, type="l", col="blue", xlab="ppm", xlim=c( 0.1, -0.1 ),
+      ylim=c(0, max(spec$int/150)), ylab="" )
+```
+
 
 You can also see the small application online at the URL https://pmb-bordeaux.fr/nmrspec/.
 

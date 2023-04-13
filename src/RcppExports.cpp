@@ -5,6 +5,11 @@
 
 using namespace Rcpp;
 
+#ifdef RCPP_USE_GLOBAL_ROSTREAM
+Rcpp::Rostream<true>&  Rcpp::Rcout = Rcpp::Rcpp_cout_get();
+Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
+#endif
+
 // SDL
 SEXP SDL(SEXP x, double Sigma);
 RcppExport SEXP _Rnmr1D_SDL(SEXP xSEXP, SEXP SigmaSEXP) {
@@ -239,8 +244,8 @@ BEGIN_RCPP
 END_RCPP
 }
 // C_align_segment
-int C_align_segment(SEXP x, SEXP s, int istart, int iend, IntegerVector v);
-RcppExport SEXP _Rnmr1D_C_align_segment(SEXP xSEXP, SEXP sSEXP, SEXP istartSEXP, SEXP iendSEXP, SEXP vSEXP) {
+int C_align_segment(SEXP x, SEXP s, int istart, int iend, int apodize, IntegerVector v);
+RcppExport SEXP _Rnmr1D_C_align_segment(SEXP xSEXP, SEXP sSEXP, SEXP istartSEXP, SEXP iendSEXP, SEXP apodizeSEXP, SEXP vSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -248,8 +253,9 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< SEXP >::type s(sSEXP);
     Rcpp::traits::input_parameter< int >::type istart(istartSEXP);
     Rcpp::traits::input_parameter< int >::type iend(iendSEXP);
+    Rcpp::traits::input_parameter< int >::type apodize(apodizeSEXP);
     Rcpp::traits::input_parameter< IntegerVector >::type v(vSEXP);
-    rcpp_result_gen = Rcpp::wrap(C_align_segment(x, s, istart, iend, v));
+    rcpp_result_gen = Rcpp::wrap(C_align_segment(x, s, istart, iend, apodize, v));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -279,6 +285,35 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< int >::type n1(n1SEXP);
     Rcpp::traits::input_parameter< int >::type n2(n2SEXP);
     rcpp_result_gen = Rcpp::wrap(C_aibin_buckets(x, b, v, l, n1, n2));
+    return rcpp_result_gen;
+END_RCPP
+}
+// C_SDL_convolution
+SEXP C_SDL_convolution(SEXP x, SEXP y, double sigma);
+RcppExport SEXP _Rnmr1D_C_SDL_convolution(SEXP xSEXP, SEXP ySEXP, SEXP sigmaSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< SEXP >::type x(xSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type y(ySEXP);
+    Rcpp::traits::input_parameter< double >::type sigma(sigmaSEXP);
+    rcpp_result_gen = Rcpp::wrap(C_SDL_convolution(x, y, sigma));
+    return rcpp_result_gen;
+END_RCPP
+}
+// C_erva_buckets
+SEXP C_erva_buckets(SEXP x, SEXP b, SEXP v, SEXP l, int n1, int n2);
+RcppExport SEXP _Rnmr1D_C_erva_buckets(SEXP xSEXP, SEXP bSEXP, SEXP vSEXP, SEXP lSEXP, SEXP n1SEXP, SEXP n2SEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< SEXP >::type x(xSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type b(bSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type v(vSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type l(lSEXP);
+    Rcpp::traits::input_parameter< int >::type n1(n1SEXP);
+    Rcpp::traits::input_parameter< int >::type n2(n2SEXP);
+    rcpp_result_gen = Rcpp::wrap(C_erva_buckets(x, b, v, l, n1, n2));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -424,19 +459,6 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
-// C_SDL_convolution
-SEXP C_SDL_convolution(SEXP x, SEXP y, double sigma);
-RcppExport SEXP _Rnmr1D_C_SDL_convolution(SEXP xSEXP, SEXP ySEXP, SEXP sigmaSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< SEXP >::type x(xSEXP);
-    Rcpp::traits::input_parameter< SEXP >::type y(ySEXP);
-    Rcpp::traits::input_parameter< double >::type sigma(sigmaSEXP);
-    rcpp_result_gen = Rcpp::wrap(C_SDL_convolution(x, y, sigma));
-    return rcpp_result_gen;
-END_RCPP
-}
 
 static const R_CallMethodDef CallEntries[] = {
     {"_Rnmr1D_SDL", (DL_FUNC) &_Rnmr1D_SDL, 2},
@@ -457,9 +479,11 @@ static const R_CallMethodDef CallEntries[] = {
     {"_Rnmr1D_C_Derive", (DL_FUNC) &_Rnmr1D_C_Derive, 1},
     {"_Rnmr1D_C_Integre", (DL_FUNC) &_Rnmr1D_C_Integre, 3},
     {"_Rnmr1D_C_segment_shifts", (DL_FUNC) &_Rnmr1D_C_segment_shifts, 6},
-    {"_Rnmr1D_C_align_segment", (DL_FUNC) &_Rnmr1D_C_align_segment, 5},
+    {"_Rnmr1D_C_align_segment", (DL_FUNC) &_Rnmr1D_C_align_segment, 6},
     {"_Rnmr1D_C_noise_estimation", (DL_FUNC) &_Rnmr1D_C_noise_estimation, 3},
     {"_Rnmr1D_C_aibin_buckets", (DL_FUNC) &_Rnmr1D_C_aibin_buckets, 6},
+    {"_Rnmr1D_C_SDL_convolution", (DL_FUNC) &_Rnmr1D_C_SDL_convolution, 3},
+    {"_Rnmr1D_C_erva_buckets", (DL_FUNC) &_Rnmr1D_C_erva_buckets, 6},
     {"_Rnmr1D_C_spectra_integrate", (DL_FUNC) &_Rnmr1D_C_spectra_integrate, 3},
     {"_Rnmr1D_C_buckets_integrate", (DL_FUNC) &_Rnmr1D_C_buckets_integrate, 3},
     {"_Rnmr1D_C_all_buckets_integrate", (DL_FUNC) &_Rnmr1D_C_all_buckets_integrate, 3},
@@ -471,7 +495,6 @@ static const R_CallMethodDef CallEntries[] = {
     {"_Rnmr1D_C_corr_spec_re", (DL_FUNC) &_Rnmr1D_C_corr_spec_re, 1},
     {"_Rnmr1D_Fmin", (DL_FUNC) &_Rnmr1D_Fmin, 6},
     {"_Rnmr1D_Fentropy", (DL_FUNC) &_Rnmr1D_Fentropy, 7},
-    {"_Rnmr1D_C_SDL_convolution", (DL_FUNC) &_Rnmr1D_C_SDL_convolution, 3},
     {NULL, NULL, 0}
 };
 

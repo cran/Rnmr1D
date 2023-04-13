@@ -1,5 +1,5 @@
 # ID RnmrTools.R
-# Copyright (C) 2017-2020 INRAE
+# Copyright (C) 2017-2022 INRAE
 # Authors: D. Jacob
 #
 
@@ -23,7 +23,9 @@ EOL <- 'EOL'
 .N <- function(x) { as.numeric(as.vector(x)) }
 .C <- function(x) { as.vector(x) }
 
-Write.LOG <- function(logfile=stdout(), ...) cat(sprintf(...), sep='', file=logfile, append=TRUE)
+Write.LOG <- function(logfile=stdout(), ...) {
+   cat(sprintf(...), sep='', file=logfile, append=TRUE)
+}
 
 fitdistr <- function(...) {
    MASS::fitdistr(...)
@@ -110,6 +112,218 @@ fitdistr <- function(...) {
   return(pList)
 }
 
+#------------------------------
+# CluPA function for two spectra.
+#------------------------------
+# This function implements the idea of the CluPA algorithm to align the target spectrum against the reference spectrum.
+.hClustAlign <-function(refSpec, tarSpec, peakList, peakLabel, startP, endP,
+                       distanceMethod="average", maxShift=0, acceptLostPeak=FALSE){
+    minpeakList=min(peakList)[1];
+    maxpeakList=max(peakList)[1];
+    startCheckP=startP+which.min(tarSpec[startP:(minpeakList-1)])[1]-1;
+    if (is.na(startCheckP)) {
+        startCheckP=startP;
+    }
+    if(startCheckP < 1){
+        startCheckP <- startP
+    }
+    
+    endCheckP=maxpeakList+ which.min(tarSpec[(maxpeakList+1):endP])[1];
+    if (is.na(endCheckP)){
+        endCheckP=endP;
+    } 
+    if(endCheckP > length(tarSpec)){
+        endCheckP <- endP
+    }
+    
+    if ((endCheckP-startCheckP)<2) {
+        return (list(tarSpec=tarSpec,peakList=peakList));
+    }
+    adj=.findShiftStepFFT(refSpec[startCheckP:endCheckP],
+                         tarSpec[startCheckP:endCheckP],maxShift=maxShift);
+    if (adj$stepAdj!=0){
+        if (acceptLostPeak) isImplementShift=TRUE 
+        else isImplementShift=(adj$stepAdj<0&&adj$stepAdj+
+                                   minpeakList >=startCheckP )||(adj$stepAdj>0&&adj$stepAdj+
+                                                                     maxpeakList<=endCheckP);
+        if (isImplementShift)
+        {
+            newTargetSpecRegion=.doShift(tarSpec[startCheckP:endCheckP],adj$stepAdj);
+            tarSpec[startCheckP:endCheckP]=newTargetSpecRegion;
+            
+            peakListTarget=which(peakLabel==0);
+            peakList[peakListTarget]=peakList[peakListTarget]+adj$stepAdj;
+            
+            lostPeaks <- which(peakList <= 0 | peakList > length(tarSpec))
+            if (length(lostPeaks) >0){
+                
+                peakList=peakList[-lostPeaks];
+                peakLabel=peakLabel[-lostPeaks];
+            }
+        }
+    }
+    
+    if (length(peakList)<3) {return (list(tarSpec=tarSpec,peakList=peakList));}
+    hc=stats::hclust(stats::dist(peakList),method=distanceMethod)
+    clusterLabel=stats::cutree(hc,h=hc$height[length(hc$height)-1]);
+    if (length(unique(clusterLabel))<2){ 
+        return (list(tarSpec=tarSpec,peakList=peakList));
+    }
+    
+    labelID1=which(clusterLabel==1);
+    subData1=peakList[labelID1];
+    subLabel1=peakLabel[labelID1];
+    
+    labelID2=which(clusterLabel==2);
+    subData2=peakList[labelID2];
+    subLabel2=peakLabel[labelID2];
+    maxsubData1=max(subData1)[1];
+    minsubData2=min(subData2)[1];
+    
+    if (maxsubData1<minsubData2){
+        endP1=maxsubData1+which.min(tarSpec[(maxsubData1+1) :(minsubData2-1)])[1];
+        if (is.na(endP1)) endP1=maxsubData1;
+        if(endP1 > length(tarSpec)){
+            endP1 <- maxsubData1
+        }
+        startP2=endP1+1;
+        if (length(unique(subLabel1))>1){
+            res=.hClustAlign(refSpec,tarSpec,subData1,subLabel1,startP,endP1,
+                            distanceMethod=distanceMethod,maxShift=maxShift,
+                            acceptLostPeak=acceptLostPeak);
+            tarSpec=res$tarSpec;
+            if(length(labelID1) == length(res$peakList)){
+                peakList[labelID1] <- res$peakList
+            } else{ 
+                res$peakList <- c(res$peakList, rep(res$peakList[1], length(labelID1)- length(res$peakList) ) )
+                peakList[labelID1] <- res$peakList
+            }
+        }        
+        if (length(unique(subLabel2))>1){
+            res=.hClustAlign(refSpec,tarSpec,subData2,subLabel2,startP2,endP,
+                            distanceMethod=distanceMethod,maxShift=maxShift,
+                            acceptLostPeak=acceptLostPeak);
+            tarSpec=res$tarSpec;
+      
+            if(length(labelID2) == length(res$peakList)){
+                peakList[labelID2]=res$peakList
+            } else{ 
+                res$peakList <- c(res$peakList, rep(res$peakList[1], length(labelID2)- length(res$peakList) ) )
+                peakList[labelID2]=res$peakList
+            }
+        }
+    }else{        
+        maxsubData2=max(subData2)[1];
+        minsubData1=min(subData1)[1];
+        endP2=maxsubData2+which.min(tarSpec[(maxsubData2+1) :(minsubData1-1)])[1];
+        if (is.na(endP2)) endP2=maxsubData2;
+        if(endP2 > length(tarSpec)){
+            endP2 <- maxsubData2
+        }
+        startP1=endP2+1;
+        if (length(unique(subLabel2))>1){
+            res=.hClustAlign(refSpec,tarSpec,subData2,subLabel2,startP,endP2,
+                            distanceMethod=distanceMethod,maxShift=maxShift,
+                            acceptLostPeak=acceptLostPeak);
+            tarSpec=res$tarSpec;
+            
+            if(length(labelID2) == length(res$peakList)){
+                peakList[labelID2]=res$peakList
+            } else{ 
+                res$peakList <- c(res$peakList, rep(res$peakList[1], length(labelID2)- length(res$peakList) ) )
+                peakList[labelID2]=res$peakList
+            }
+        }    
+        if (length(unique(subLabel1))>1){
+            res=.hClustAlign(refSpec,tarSpec,subData1,subLabel1,startP1,endP,
+                            distanceMethod=distanceMethod,maxShift=maxShift,
+                            acceptLostPeak=acceptLostPeak);
+            tarSpec=res$tarSpec;
+            if(length(labelID1) == length(res$peakList)){
+                peakList[labelID1] <- res$peakList
+            } else{ 
+                res$peakList <- c(res$peakList, rep(res$peakList[1], length(labelID1)- length(res$peakList) ) )
+                peakList[labelID1] <- res$peakList
+            }
+        }        
+    }    
+    return (list(tarSpec=tarSpec,peakList=peakList));
+}
+
+# Segment shift
+# Move a spectral segment of a sample shiftStep points to right or left
+.doShift <-function(specSeg, shiftStep){
+    nFea=length(specSeg);
+    newSegment=double(nFea);
+    for (j in 1:nFea)
+        if (shiftStep+j>0&&shiftStep+j<=nFea) 
+            newSegment[shiftStep+j]=specSeg[j];
+        if (shiftStep>0){
+            for (j in 1: shiftStep) newSegment[j]=newSegment[shiftStep+1];
+        }
+        else{
+            for (j in (nFea+shiftStep): nFea) 
+                newSegment[j]=newSegment[(nFea+shiftStep-1)];
+        }
+        return (newSegment);
+}
+
+# Finding the shift-step by using Fast Fourier Transform cross- correlation
+# This function uses Fast Fourier Transform cross-correlation to find out the shift step between two spectra.
+.findShiftStepFFT<-function (refSpec, tarSpec, maxShift = 0, scale=NULL) 
+{
+    #do scaling if the spectra are low abundant
+    refScale=stats::median(abs(refSpec)); if (refScale==0) refScale=mean(abs(refSpec))
+    tarScale=stats::median(abs(tarSpec)); if (tarScale==0) tarScale=mean(abs(tarSpec))
+    scaleFactor=10^round(-log10(min(tarScale,refScale)))
+    if (is.null(scale) & scaleFactor > 1) scale=TRUE
+    if (is.null(scale)) scale=FALSE
+    if (scale){
+        refScale=refScale*scaleFactor
+        tarScale=tarScale*scaleFactor
+    }
+    
+    
+    M = length(refSpec)
+    zeroAdd = 2^ceiling(log2(M)) - M
+    r = c(refSpec*1e6, double(zeroAdd))
+    s = c(tarSpec*1e6, double(zeroAdd))
+    M = M + zeroAdd
+    fftR = stats::fft(r)
+    fftS = stats::fft(s)
+    R = fftR * Conj(fftS)
+    R = R/M
+    rev = stats::fft(R, inverse = TRUE)/length(R)
+    vals = Re(rev)
+    maxi = -1
+    maxpos = 1
+    lenVals <- length(vals)
+    if ((maxShift == 0) || (maxShift > M)) 
+        maxShift = M
+    if (anyNA(vals)) {
+        lag = 0
+        return(list(corValue = maxi, stepAdj = lag))
+    }
+    for (i in 1:maxShift) {
+        if (vals[i] > maxi) {
+            maxi = vals[i]
+            maxpos = i
+        }
+        if (vals[lenVals - i + 1] > maxi) {
+            maxi = vals[lenVals - i + 1]
+            maxpos = lenVals - i + 1
+        }
+    }
+    
+    if (maxi < 0.1) {
+        lag = 0
+        return(list(corValue = maxi, stepAdj = lag))
+    }
+    if (maxpos > lenVals/2) 
+        lag = maxpos - lenVals - 1
+    else lag = maxpos - 1
+    return(list(corValue = maxi, stepAdj = lag))
+}
 
 #------------------------------
 # CluPA alignment for multiple spectra
@@ -131,14 +345,14 @@ fitdistr <- function(...) {
      myPeakList <- c(peakList[[refInd]], peakList[[tarInd]])
      myPeakLabel <- double(length(myPeakList))
      myPeakLabel[1:length(peakList[[refInd]])] <- 1
-     res <- hClustAlign(refSpec, tarSpec, myPeakList, myPeakLabel, 1, length(tarSpec), maxShift = maxShift, acceptLostPeak = TRUE)
+     res <- .hClustAlign(refSpec, tarSpec, myPeakList, myPeakLabel, 1, length(tarSpec), maxShift = maxShift, acceptLostPeak = TRUE)
      res$tarSpec
   }}
   return(Y)
 }
 
 #------------------------------
-# Spectra alignment - see https://cran.r-project.org/web/packages/speaq/vignettes/speaq.pdf
+# Spectra alignment
 #------------------------------
 # Input parameters
 #   - data: n x p datamatrix
@@ -160,8 +374,6 @@ fitdistr <- function(...) {
 
   ## Reference spectrum determination
   if (reference == 0) {
-     #resFindRef<- speaq::findRef(peakList)
-     #refInd <- resFindRef$refInd
      V <- bestref(data, optim.crit="WCC")
      refInd  <- V$best.ref
 
@@ -180,6 +392,7 @@ fitdistr <- function(...) {
   ## Output  
   return(list(M=Y, LOGMSG=LOGMSG))
 }
+
 
 #------------------------------
 # Calibration ot the PPM Scale
@@ -473,16 +686,16 @@ RZero1D <- function(specMat, zones, DEBUG=FALSE)
 #------------------------------
 # LS : Alignment of the selected PPM ranges
 #------------------------------
-RAlign1D <- function(specMat, zone, RELDECAL=0.35, idxSref=0, Selected=NULL)
+RAlign1D <- function(specMat, zone, RELDECAL=0.35, idxSref=0, Selected=NULL, fapodize=FALSE)
 {
    # Alignment of each PPM range
    NBPASS <- 3
    i1 <- ifelse( max(zone)>=specMat$ppm_max, 1, length(which(specMat$ppm>max(zone))) )
    i2 <- ifelse( min(zone)<=specMat$ppm_min, specMat$size - 1, which(specMat$ppm<=min(zone))[1] )
-   
+   apodize <- ifelse(fapodize,1,0)
    decal <- round((i2-i1)*RELDECAL)
    for( n in 1:NBPASS) {
-       ret <- align_segment(specMat$int, segment_shifts( specMat$int, idxSref, decal, i1-1, i2-1, Selected-1), i1-1, i2-1, Selected-1)
+       ret <- align_segment(specMat$int, segment_shifts( specMat$int, idxSref, decal, i1-1, i2-1, Selected-1), i1-1, i2-1, apodize, Selected-1)
    }
 
    return(specMat)
@@ -581,17 +794,22 @@ RBucket1D <- function(specMat, Algo, resol, snr, zones, zonenoise, appendBuc, DE
 {
    # Limit size of buckets
    MAXBUCKETS<-2000
-   NOISE_FAC <- 3
    LOGMSG <- ""
 
-   if (Algo != 'vsb') {
+   if (Algo %in% c('aibin','erva','unif')) {
       # Noise estimation
-      PPM_NOISE_AREA <- c(min(zonenoise), max(zonenoise))
+      if (sum(is.na(zonenoise))) {
+          PPM_NOISE_AREA <- c(10.2, 10.5)
+      } else {
+         PPM_NOISE_AREA <- c(min(zonenoise), max(zonenoise))
+      }
       idx_Noise <- c( length(which(specMat$ppm>PPM_NOISE_AREA[2])),(which(specMat$ppm<=PPM_NOISE_AREA[1])[1]) )
       Vref <- spec_ref(specMat$int)
       ynoise <- C_noise_estimation(Vref,idx_Noise[1],idx_Noise[2])
       Vnoise <- abs( C_noise_estimate(specMat$int, idx_Noise[1],idx_Noise[2], 1) )
-      
+   }
+
+   if (Algo %in% c('aibin')) {
       bdata <- list()
       bdata$ynoise <- ynoise
       bdata$vnoise <- NULL
@@ -599,12 +817,30 @@ RBucket1D <- function(specMat, Algo, resol, snr, zones, zonenoise, appendBuc, DE
       bdata$inoise_end <- idx_Noise[2]
       bdata$R <- resol
       bdata$dppm <- specMat$dppm
-      bdata$noise_fac <- NOISE_FAC
-      bdata$bin_fac <- 0.5
-      bdata$peaknoise_rate <- 15
-      bdata$BUCMIN <- 0.003
       bdata$VREF <- 1
+
+      if (specMat$nuc == "1H") {
+         bdata$noise_fac <- 3
+         bdata$bin_fac <- 0.5
+         bdata$peaknoise_rate <- 15
+         bdata$BUCMIN <- 0.003
+      } else {
+         bdata$noise_fac <- 2
+         bdata$bin_fac <- 0.1
+         bdata$peaknoise_rate <- 5
+         bdata$BUCMIN <- 0.05
+      }
    }
+
+   if (Algo %in% c('erva')) {
+      bdata <- list()
+      bdata$bucketsize <- resol
+      bdata$noise_fac <- 1
+      bdata$dppm <- specMat$dppm
+      bdata$ppm_min <- specMat$ppm_min
+      bdata$BUCMIN <- 0.001
+   }
+
 
    # For each PPM range
    buckets_zones <- NULL
@@ -618,19 +854,26 @@ RBucket1D <- function(specMat, Algo, resol, snr, zones, zonenoise, appendBuc, DE
           Mbuc[] <- 0
           buckets_m <- C_aibin_buckets(specMat$int, Mbuc, Vref, bdata, i1, i2)
        }
+       if (Algo=='erva') {
+          Mbuc <- matrix(, nrow = MAXBUCKETS, ncol = 2)
+          Mbuc[] <- 0
+          buckets_m <- C_erva_buckets(specMat$int, Mbuc, Vref, bdata, i1, i2)
+       }
        if (Algo=='unif') {
           seq_buc <- seq(i1, i2, round(resol/specMat$dppm))
           n_bucs <- length(seq_buc) - 1
           buckets_m <- cbind ( seq_buc[1:n_bucs], seq_buc[2:(n_bucs+1)])
-          # Keep only the buckets for which the SNR average is greater than 'snr'
-          MaxVals <- C_maxval_buckets (specMat$int, buckets_m)
-          buckets_m <- buckets_m[ which( apply(t(MaxVals/(2*Vnoise)),1,stats::quantile)[4,]>snr), ]
        }
        if (Algo=='vsb') {
           buckets_m <- matrix( c( i1, i2 ), nrow=1, ncol=2, byrow=T )
        }
-
        LOGMSG <- paste("Rnmr1D:     Zone",i,"= (",min(zones[i,]),",",max(zones[i,]),"), Nb Buckets =",dim(buckets_m)[1],"\n")
+       if (dim(buckets_m)[1]>1) {
+          # Keep only the buckets for which the SNR average is greater than 'snr'
+          MaxVals <- C_maxval_buckets (specMat$int, buckets_m)
+          buckets_m <- buckets_m[ which( apply(t(MaxVals/(2*Vnoise)),1,stats::quantile)[4,]>snr), ]
+       }
+
        cbind( specMat$ppm[buckets_m[,1]], specMat$ppm[buckets_m[,2]], LOGMSG )
    }
    if( DEBUG ) LOGMSG <- paste0(LOGMSG, paste(unique(buckets_zones[,3]), collapse=""))
@@ -798,11 +1041,14 @@ doProcCmd <- function(specObj, cmdstr, ncpu=1, debug=FALSE)
  # Samples
    samples <- specObj$samples
 
+ # Macro-commands
    CMDTEXT <- cmdstr[ grep( "^[^ ]", cmdstr ) ]
    CMD <- CMDTEXT[ grep( "^[^#]", CMDTEXT ) ]
    CMD <- gsub("^ ", "", gsub(" $", "", gsub(" +", ";", CMD)))
 
+   specMat$nuc <- specObj$nuc
    specMat$fWriteSpec <- FALSE
+   LOGFILE <- globvars$LOGFILE
 
    cl <- parallel::makeCluster(ncpu)
    doParallel::registerDoParallel(cl)
@@ -937,7 +1183,7 @@ doProcCmd <- function(specObj, cmdstr, ncpu=1, debug=FALSE)
                  idxSref=params[4]
                  Write.LOG(LOGFILE,paste0("Rnmr1D:  Alignment: PPM Range = ( ",min(PPMRANGE)," , ",max(PPMRANGE)," )\n"))
                  Write.LOG(LOGFILE,paste0("Rnmr1D:     Rel. Shift Max.=",RELDECAL," - Reference=",idxSref,"\n"))
-                 specMat <- RWrapperCMD1D(cmdName,specMat, PPMRANGE, RELDECAL, idxSref, Selected=Selected)
+                 specMat <- RWrapperCMD1D(cmdName,specMat, PPMRANGE, RELDECAL, idxSref, Selected=Selected, fapodize=FALSE)
                  specMat$fWriteSpec <- TRUE
                  CMD <- CMD[-1]
               }
@@ -1017,7 +1263,7 @@ doProcCmd <- function(specObj, cmdstr, ncpu=1, debug=FALSE)
               break
           }
           if (cmdName == lbBUCKET) {
-              if ( !( length(cmdPars) >= 6 && cmdPars[2] %in% c('aibin','unif') ) &&
+              if ( !( length(cmdPars) >= 6 && cmdPars[2] %in% c('aibin','erva','unif') ) &&
                    !( length(cmdPars) <= 3 && cmdPars[2] %in% c('vsb') ) ) {
                  CMD <- CMD[-1]
                  break;
@@ -1029,7 +1275,7 @@ doProcCmd <- function(specObj, cmdstr, ncpu=1, debug=FALSE)
                   CMD <- CMD[-1]
               }
               fappend <- 0
-              if ( cmdPars[2] %in% c('aibin','unif') ) {
+              if ( cmdPars[2] %in% c('aibin','erva','unif') ) {
                   params <- as.numeric(cmdPars[-c(1:2)])
                   PPM_NOISE <- c( min(params[1:2]), max(params[1:2]) )
                   resol <- params[3]; snr <- params[4];

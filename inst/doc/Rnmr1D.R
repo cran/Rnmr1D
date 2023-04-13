@@ -51,12 +51,12 @@ clustcor <- Rnmr1D::getClusters(outMat, method='corr', cval=0, dC=0.003, ncpu=2)
 
 ## ----proc5b, echo=TRUE, eval=TRUE---------------------------------------------
 options(warn=-1)
-clusthca <- Rnmr1D::getClusters(outMat, method='hca', vcutusr=0.11)
+clusthca <- Rnmr1D::getClusters(outMat, method='hca', vcutusr=0.12)
 
 ## ----proc5c, echo=TRUE, eval=TRUE---------------------------------------------
 clustcor$clustertab[1:20, ]
 
-clustcor$clusters$C3      # same as clustcor$clusters[['C3']]
+clustcor$clusters$C7      # same as clustcor$clusters[['C7']]
 
 ## ----plot5a, echo=TRUE, fig.align='center', fig.width=12, fig.height=6--------
 g1 <- ggplotCriterion(clustcor)
@@ -142,4 +142,14 @@ plot( spec$ppm, spec$int, type="l", col="blue",
                 xlab="ppm", ylab="Intensities", 
                 xlim=c( spec$pmax, spec$pmin ), ylim=c(0, max(spec$int/100)) )
 legend("topleft", legend=metadata$samples[ID,1])
+
+## ----plot10, echo=TRUE, fig.align='center', fig.width=9, fig.height=6---------
+layout(matrix(c(1,1,2,3), 1, 4, byrow = TRUE))
+plot( spec$ppm, spec$int, type="l", col="blue", xlab="ppm", xlim=c( 8, 6 ), 
+      ylim=c(0, max(spec$int/1500)), ylab="Intensities" )
+legend("topleft", legend=metadata$samples[ID,1])
+plot( spec$ppm, spec$int, type="l", col="blue", xlab="ppm", xlim=c( 4.9, 4.7 ),
+      ylim=c(0, max(spec$int/10)), ylab="" )
+plot( spec$ppm, spec$int, type="l", col="blue", xlab="ppm", xlim=c( 0.1, -0.1 ),
+      ylim=c(0, max(spec$int/150)), ylab="" )
 
